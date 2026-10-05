@@ -1,12 +1,8 @@
 # denki-yoho (電気予報)
 
-Battery remaining-time forecast for Linux laptops that knows your usual
-power draw at each time of day.
+Battery remaining-time forecast for Linux laptops that knows your usual power draw at each time of day.
 
-Waybar's built-in battery module (and most others) estimate
-`energy_now / power_now`, so the number jumps with every load spike.
-denki-yoho reads the history upower already records, builds a "usual watts
-at this time of day" profile, and simulates forward from the current energy.
+Waybar's built-in battery module (and most others) estimate `energy_now / power_now`, so the number jumps with every load spike. denki-yoho reads the history upower already records, builds a "usual watts at this time of day" profile, and simulates forward from the current energy.
 
 ```
 $ denki-yoho status
@@ -20,24 +16,15 @@ profile: cached
 
 ## How it works
 
-1. **Profile**: discharge samples from the last 14 days of
-   `/var/lib/upower/history-rate-<model>-*-<serial>.dat` are grouped into
-   30-minute bins of local time. Each bin takes the median watts. A sparse
-   bin pools in its neighbours, then falls back to the overall median.
-2. **Current draw**: EWMA (τ = 5 min) over the last 10 minutes of samples
-   plus the live `power_now`.
-3. **Forecast**: steps forward a minute at a time, blending from the current
-   draw to the profile (τ = 30 min), until the energy reaches zero.
+1. **Profile**: discharge samples from the last 14 days of `/var/lib/upower/history-rate-<model>-*-<serial>.dat` are grouped into 30-minute bins of local time. Each bin takes the median watts. A sparse bin pools in its neighbours, then falls back to the overall median.
+2. **Current draw**: EWMA (τ = 5 min) over the last 10 minutes of samples plus the live `power_now`.
+3. **Forecast**: steps forward a minute at a time, blending from the current draw to the profile (τ = 30 min), until the energy reaches zero.
 
 Charging shows `(energy_full - energy_now) / power_now`.
 
 ### Stateless and cheap
 
-No daemon, no log of its own: upowerd is the only thing that needs to run.
-Each invocation reads sysfs and the last 16 KiB of the history log. The
-profile is cached in `$XDG_RUNTIME_DIR/denki-yoho-profile` (tmpfs) and rebuilt
-from the full log once an hour, so a run takes about 1–2 ms. Deleting the
-cache is always safe.
+No daemon, no log of its own: upowerd is the only thing that needs to run. Each invocation reads sysfs and the last 16 KiB of the history log. The profile is cached in `$XDG_RUNTIME_DIR/denki-yoho-profile` (tmpfs) and rebuilt from the full log once an hour, so a run takes about 1–2 ms. Deleting the cache is always safe.
 
 ## Usage
 
@@ -68,14 +55,12 @@ Options:
 }
 ```
 
-The JSON carries `text`, `tooltip`, `percentage` and `class`
-(`warning` ≤ 30 %, `critical` ≤ 15 %, `charging`, `plugged`), so the usual
-selectors work as `#custom-battery.critical:not(.charging)` etc.
+The JSON carries `text`, `tooltip`, `percentage` and `class` (`warning` ≤ 30 %, `critical` ≤ 15 %, `charging`, `plugged`), so the usual selectors work as `#custom-battery.critical:not(.charging)` etc.
 
 ## Install
 
 ```sh
-nix run github:<owner>/Denki_yoho -- status
+nix run github:rei78-4e/denki-yoho -- status
 ```
 
 or add the flake's `packages.<system>.default` to your profile.
