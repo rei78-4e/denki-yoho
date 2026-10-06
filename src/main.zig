@@ -122,6 +122,7 @@ const Estimate = struct {
     naive: ?f64 = null,
     profile: ?profile.Profile = null,
     cached: bool = false,
+    profile_err: ?anyerror = null,
 };
 
 const Ctx = struct {
@@ -144,7 +145,9 @@ const Ctx = struct {
         }
 
         const path = history.findRateFile(ctx.io, ctx.arena, bat.model, bat.serial);
-        if (path) |p| ctx.loadProfile(p, &est) catch {};
+        if (path) |p| ctx.loadProfile(p, &est) catch |err| {
+            est.profile_err = err;
+        };
         if (bat.status != .discharging) return est;
 
         const recent = if (path) |p| blk: {
@@ -221,7 +224,7 @@ fn writeWaybar(out: *Io.Writer, arena: Allocator, est: *const Estimate) !void {
         try classes.append(arena, "warning");
 
     const text = switch (est.bat.status) {
-        .discharging => try std.fmt.allocPrint(arena, "{s}{d}%", .{ icons[@min(@as(usize, cap) * icons.len / 100, icons.len - 1)], cap }),
+        .discharging => try std.fmt.allocPrint(arena, "{s} {d}%", .{ icons[@min(@as(usize, cap) * icons.len / 100, icons.len - 1)], cap }),
         .charging => blk: {
             try classes.append(arena, "charging");
             break :blk try std.fmt.allocPrint(arena, icon_charging ++ " {d}%", .{cap});
@@ -244,6 +247,7 @@ fn writeWaybar(out: *Io.Writer, arena: Allocator, est: *const Estimate) !void {
 fn writeStatus(out: *Io.Writer, arena: Allocator, est: *const Estimate) !void {
     try out.print("{s} {d}%\n{s}\n", .{ @tagName(est.bat.status), est.bat.capacity, try describe(arena, est) });
     if (est.profile != null) try out.print("profile: {s}\n", .{if (est.cached) "cached" else "rebuilt"});
+    if (est.profile_err) |err| try out.print("profile: failed to load ({s})\n", .{@errorName(err)});
 }
 
 fn writeProfile(out: *Io.Writer, est: *const Estimate, now: i64) !void {
